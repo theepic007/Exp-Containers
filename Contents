@@ -1,0 +1,208 @@
+package me.BB_Blocks.bottleExp;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Material;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class BottleExp extends JavaPlugin implements Listener
+{
+	@Override
+	public void onEnable()
+	{
+		this.getServer().getPluginManager().registerEvents(this, this);
+	}
+	
+	@SuppressWarnings("deprecation")
+	@Override
+	public boolean onCommand(CommandSender sender, Command cmd, String cmdLabel, String[] args)
+	{
+		if(!(sender instanceof Player))
+		{
+			sender.sendMessage(ChatColor.BOLD + "" + ChatColor.DARK_RED + "You must be a player!");
+			return true;
+		}
+		
+		Player player = (Player) sender;
+		
+		if(cmdLabel.equalsIgnoreCase("bottlexp"))
+		{
+			if(args.length == 1)
+			{
+				if(player.hasPermission("bottlexp.withdraw.self"))
+				{
+					if(isInt(args[0]))
+					{
+						int amount = (int) Integer.parseInt(args[0]);
+						String amount1 = amount + "";
+						
+						if(amount > 0 && Experience.getExp(player) >= amount)
+						{
+							ItemStack expBottle = new ItemStack(Material.NETHER_STAR);
+							ItemMeta meta1 = expBottle.getItemMeta();
+							ArrayList<String> lore1 = new ArrayList<String>();
+							lore1.add(amount1);
+							lore1.add(ChatColor.BOLD + "" + ChatColor.YELLOW + "EXP STORED");
+							meta1.setLore(lore1);
+							meta1.setDisplayName(ChatColor.YELLOW + "Exp Container");
+							expBottle.setItemMeta(meta1);
+							player.getInventory().addItem(expBottle);
+							
+							int amountToChange = amount * -1;
+							
+							Experience.changeExp(player, amountToChange);
+						}
+						else
+						{
+							player.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "You don't have enough EXP to withdraw: " + amount + ".");
+						}
+					}
+					else
+					{
+						sender.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "Please use a valid number.");
+					}
+				}
+			}
+			else if(args.length == 2)
+			{
+				if(player.hasPermission("bottlexp.withdraw.other"))
+				{
+					if(Bukkit.getPlayer(args[1]).isOnline())
+					{
+						Player target = Bukkit.getPlayer(args[1]);
+						
+						if(isInt(args[0]))
+						{
+							int amount = (int) Integer.parseInt(args[0]);
+							String amount1 = amount + "";
+							
+							if(amount > 0 && Experience.getExp(target) >= amount)
+							{
+								ItemStack expBottle = new ItemStack(Material.NETHER_STAR);
+								ItemMeta meta1 = expBottle.getItemMeta();
+								ArrayList<String> lore1 = new ArrayList<String>();
+								lore1.add(amount1);
+								lore1.add(ChatColor.BOLD + "" + ChatColor.YELLOW + "EXP STORED");
+								meta1.setLore(lore1);
+								meta1.setDisplayName(ChatColor.YELLOW + "Exp Container");
+								expBottle.setItemMeta(meta1);
+								target.getInventory().addItem(expBottle);
+								
+								int amountToChange = amount * -1;
+								
+								Experience.changeExp(target, amountToChange);
+							}
+							else
+							{
+								player.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + target.getName() + "doesn't have enough EXP to withdraw: " + amount + ".");
+							}
+						}
+						else
+						{
+							sender.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "Please use a number. /bottlexp <amount> [target player]");
+						}
+					}
+				}
+			}
+			else
+			{
+				sender.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "Format /bottlexp <amount> [target Player]");
+			}
+		}
+		
+		return true;
+	}
+	
+	@SuppressWarnings("deprecation")
+	@EventHandler
+	public void onCombine(InventoryClickEvent event)
+	{
+		ItemStack cursor = event.getCursor();
+		ItemStack itemSelected = event.getCurrentItem();
+		
+		if(cursor.getType() == Material.NETHER_STAR && itemSelected.getType() == Material.NETHER_STAR)
+		{
+			if(cursor.getItemMeta().hasLore() && itemSelected.getItemMeta().hasLore() && isInt(cursor.getItemMeta().getLore().get(0)) && isInt(itemSelected.getItemMeta().getLore().get(0)))
+			{
+				event.setCancelled(true);
+				
+				ItemMeta cursorMeta = cursor.getItemMeta();
+				List<String> lore = cursorMeta.getLore();
+				String strAmount = lore.get(0);
+				int amount = Integer.parseInt(strAmount);
+				
+				ItemMeta itemMeta = itemSelected.getItemMeta();
+				List<String> lore1 = itemMeta.getLore();
+				String strAmount1 = lore1.get(0);
+				int amount1 = Integer.parseInt(strAmount1);
+				
+				int finalAmount = amount + amount1;
+				
+				lore1.remove(1);
+				lore1.remove(0);
+				lore1.add(finalAmount + "");
+				lore1.add(ChatColor.BOLD + "" + ChatColor.YELLOW + "EXP STORED");
+				
+				itemMeta.setLore(lore1);
+				itemSelected.setItemMeta(itemMeta);
+				
+				event.setCursor(null);
+			}
+		}
+	}
+	
+	@EventHandler
+	public void onRightClick(PlayerInteractEvent event)
+	{
+		Player p = (Player) event.getPlayer();
+		final Action action = event.getAction();
+		ItemStack i = event.getItem();
+		ItemStack air = new ItemStack(Material.AIR);
+		
+		if(action.equals(Action.RIGHT_CLICK_AIR) || action.equals(Action.RIGHT_CLICK_BLOCK))
+		{
+			if(i.getType() == Material.NETHER_STAR)
+			{
+				ItemMeta meta = i.getItemMeta();
+				List<String> lore = meta.getLore();
+				
+				if(i.getItemMeta().hasLore())
+				{
+					String number = lore.get(0);
+					
+					int xpStored = Integer.parseInt(number);
+					
+					p.giveExp(xpStored);
+					p.getInventory().setItemInHand(air);
+					
+					p.sendMessage(ChatColor.GREEN + "You were given " + xpStored + " exp.");
+				}
+			}
+		}
+	}
+	
+	public static boolean isInt(String s) {
+	    try
+	    {
+	        Integer.parseInt(s);
+	    }
+	    catch (NumberFormatException nfe)
+	    {
+	        return false;
+	    }
+	    return true;
+	}
+}
